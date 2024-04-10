@@ -1,102 +1,138 @@
 using System;
 using System.Collections.Generic;
 
-public class Bank
+// Abstraction
+public abstract class Account
 {
-    private List<Account> accounts;
+    private string accountNumber;
+    protected double balance;
+    protected List<string> transactionHistory;
 
-    public Bank()
+    public Account(string accountNumber)
     {
-        accounts = new List<Account>();
-    }
-
-    public Account CreateAccount(string accountHolderName)
-    {
-        Account newAccount = new Account(accountHolderName);
-        accounts.Add(newAccount);
-        return newAccount;
-    }
-
-    public void PrintAllStatements()
-    {
-        foreach (Account account in accounts)
-        {
-            account.PrintStatement();
-            Console.WriteLine();
-        }
-    }
-}
-
-public class Account
-{
-    private static int accountCount = 0;
-
-    public string AccountNumber { get; private set; }
-    public string AccountHolderName { get; private set; }
-    public double Balance { get; private set; }
-
-    private List<string> transactionHistory;
-
-    public Account(string accountHolderName)
-    {
-        AccountNumber = GenerateAccountNumber();
-        AccountHolderName = accountHolderName;
-        Balance = 0;
+        this.accountNumber = accountNumber;
+        balance = 0;
         transactionHistory = new List<string>();
-    }
-
-    private string GenerateAccountNumber()
-    {
-        accountCount++;
-        return "ACC" + accountCount.ToString().PadLeft(4, '0');
     }
 
     public void Deposit(double amount)
     {
-        Balance += amount;
-        transactionHistory.Add($"Deposit: +{amount:C}. Balance: {Balance:C}");
+        balance += amount;
+        transactionHistory.Add($"Deposit: +{amount}");
+        Console.WriteLine($"{amount} deposited successfully.");
     }
 
-    public bool Withdraw(double amount)
+    public virtual void Withdraw(double amount)
     {
-        if (amount > Balance)
+        if (amount <= balance)
+        {
+            balance -= amount;
+            transactionHistory.Add($"Withdrawal: -{amount}");
+            Console.WriteLine($"{amount} withdrawn successfully.");
+        }
+        else
         {
             Console.WriteLine("Insufficient funds.");
-            return false;
         }
-
-        Balance -= amount;
-        transactionHistory.Add($"Withdrawal: -{amount:C}. Balance: {Balance:C}");
-        return true;
     }
 
-    public void PrintStatement()
+    public abstract void PrintStatement();
+}
+
+// Inheritance
+public class SavingsAccount : Account
+{
+    public SavingsAccount(string accountNumber) : base(accountNumber) { }
+
+    public override void PrintStatement()
     {
-        Console.WriteLine($"Account Number: {AccountNumber}");
-        Console.WriteLine($"Account Holder: {AccountHolderName}");
-        Console.WriteLine($"Balance: {Balance:C}");
+        Console.WriteLine($"Savings Account Statement: Balance = {balance}");
         Console.WriteLine("Transaction History:");
-        foreach (string transaction in transactionHistory)
+        foreach (var transaction in transactionHistory)
         {
             Console.WriteLine(transaction);
         }
     }
 }
 
+public class CheckingAccount : Account
+{
+    public CheckingAccount(string accountNumber) : base(accountNumber) { }
+
+    public override void PrintStatement()
+    {
+        Console.WriteLine($"Checking Account Statement: Balance = {balance}");
+        Console.WriteLine("Transaction History:");
+        foreach (var transaction in transactionHistory)
+        {
+            Console.WriteLine(transaction);
+        }
+    }
+}
+
+// Authentication
+public class User
+{
+    public string Username { get; set; }
+    public string Password { get; set; }
+
+    public User(string username, string password)
+    {
+        Username = username;
+        Password = password;
+    }
+}
+
+// Account Management
+public class Bank
+{
+    private Dictionary<string, Account> accounts;
+    private Dictionary<string, User> users;
+
+    public Bank()
+    {
+        accounts = new Dictionary<string, Account>();
+        users = new Dictionary<string, User>();
+    }
+
+    public void AddAccount(string username, string password, Account account)
+    {
+        User user = new User(username, password);
+        users.Add(username, user);
+        accounts.Add(username, account);
+        Console.WriteLine("Account created successfully.");
+    }
+
+    public Account Authenticate(string username, string password)
+    {
+        if (users.ContainsKey(username) && users[username].Password == password)
+        {
+            Console.WriteLine("Authentication successful.");
+            return accounts[username];
+        }
+        else
+        {
+            Console.WriteLine("Authentication failed. Invalid username or password.");
+            return null;
+        }
+    }
+}
+
+// Polymorphism
 class Program
 {
     static void Main(string[] args)
     {
         Bank bank = new Bank();
+        bank.AddAccount("user1", "password1", new SavingsAccount("SA001"));
+        bank.AddAccount("user2", "password2", new CheckingAccount("CA001"));
 
-        Account account1 = bank.CreateAccount("John Doe");
-        account1.Deposit(1000);
-        account1.Withdraw(200);
-
-        Account account2 = bank.CreateAccount("Jane Smith");
-        account2.Deposit(500);
-        account2.Withdraw(100);
-
-        bank.PrintAllStatements();
+        Account authenticatedAccount = bank.Authenticate("user1", "password1");
+        if (authenticatedAccount != null)
+        {
+            authenticatedAccount.Deposit(1000);
+            authenticatedAccount.Withdraw(500);
+            authenticatedAccount.PrintStatement();
+        }
     }
 }
